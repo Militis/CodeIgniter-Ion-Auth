@@ -168,7 +168,17 @@ class Ion_auth_model extends CI_Model
 		$this->load->config('ion_auth', TRUE);
 		$this->load->helper('cookie');
 		$this->load->helper('date');
-		$this->load->library('session');
+
+		//Load the session, CI2 as a library, CI3 uses it as a driver
+		if (substr(CI_VERSION, 0, 1) == '2') 
+		{
+			$this->load->library('session');
+		}
+		else
+		{
+			$this->load->driver('session');
+		}
+		
 		$this->lang->load('ion_auth');
 
 		//initialize db tables data
@@ -561,24 +571,24 @@ class Ion_auth_model extends CI_Model
 			return FALSE;
 		}
 
-		$result = $query->row();
+		$user = $query->row();
 
-		$old         = $this->hash_password_db($result->id, $old);
-		$new         = $this->hash_password($new, $result->salt);
+		$old_password_matches = $this->hash_password_db($user->id, $old);
 
-		if ($old === TRUE)
+		if ($old_password_matches === TRUE)
 		{
 			//store the new password and reset the remember code so all remembered instances have to re-login
+			$hashed_new_password  = $this->hash_password($new, $user->salt);
 			$data = array(
-			    'password' => $new,
+			    'password' => $hashed_new_password,
 			    'remember_code' => NULL,
 			);
 
 			$this->trigger_events('extra_where');
 			$this->db->update($this->tables['users'], $data, array($this->identity_column => $identity));
 
-			$return = $this->db->affected_rows() == 1;
-			if ($return)
+			$successfully_changed_password_in_db = $this->db->affected_rows() == 1;
+			if ($successfully_changed_password_in_db)
 			{
 				$this->trigger_events(array('post_change_password', 'post_change_password_successful'));
 				$this->set_message('password_change_successful');
@@ -589,7 +599,7 @@ class Ion_auth_model extends CI_Model
 				$this->set_error('password_change_unsuccessful');
 			}
 
-			return $return;
+			return $successfully_changed_password_in_db;
 		}
 
 		$this->set_error('password_change_unsuccessful');
@@ -1689,8 +1699,8 @@ class Ion_auth_model extends CI_Model
 		}
 
 		// bail if the group name already exists
-		$existing_group = $this->db->get_where('groups', array('name' => $group_name))->row();
-		if(!is_null($existing_group->id))
+		$existing_group = $this->db->get_where($this->tables['groups'], array('name' => $group_name))->num_rows();
+		if($existing_group !== 0)
 		{
 			$this->set_error('group_already_exists');
 			return FALSE;
@@ -1725,7 +1735,7 @@ class Ion_auth_model extends CI_Model
 		}
 
 		// bail if the group name already exists
-		$existing_group = $this->db->get_where('groups', array('name' => $group_name))->row();
+		$existing_group = $this->db->get_where($this->tables['groups'], array('name' => $group_name))->row();
 		if(isset($existing_group->id) && $existing_group->id != $group_id)
 		{
 			$this->set_error('group_already_exists');
