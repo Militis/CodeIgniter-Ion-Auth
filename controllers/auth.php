@@ -6,7 +6,6 @@ class Auth extends CI_Controller {
 	{
 		parent::__construct();
 		$this->load->library('ion_auth');
-		$this->load->library('session');
 		$this->load->library('form_validation');
 		$this->load->helper('url');
 
@@ -17,6 +16,9 @@ class Auth extends CI_Controller {
 		$this->load->database();
 
 		$this->form_validation->set_error_delimiters($this->config->item('error_start_delimiter', 'ion_auth'), $this->config->item('error_end_delimiter', 'ion_auth'));
+
+		$this->lang->load('auth');
+		$this->load->helper('language');
 	}
 
 	//redirect if needed, otherwise display the user list
@@ -45,8 +47,7 @@ class Auth extends CI_Controller {
 				$this->data['users'][$k]->groups = $this->ion_auth->get_users_groups($user->id)->result();
 			}
 
-
-			$this->load->view('auth/index', $this->data);
+			$this->_render_page('auth/index', $this->data);
 		}
 	}
 
@@ -96,7 +97,7 @@ class Auth extends CI_Controller {
 				'type' => 'password',
 			);
 
-			$this->load->view('auth/login', $this->data);
+			$this->_render_page('auth/login', $this->data);
 		}
 	}
 
@@ -116,9 +117,9 @@ class Auth extends CI_Controller {
 	//change password
 	function change_password()
 	{
-		$this->form_validation->set_rules('old', 'Old password', 'required');
-		$this->form_validation->set_rules('new', 'New Password', 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[new_confirm]');
-		$this->form_validation->set_rules('new_confirm', 'Confirm New Password', 'required');
+		$this->form_validation->set_rules('old', $this->lang->line('change_password_validation_old_password_label'), 'required');
+		$this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[new_confirm]');
+		$this->form_validation->set_rules('new_confirm', $this->lang->line('change_password_validation_new_password_confirm_label'), 'required');
 
 		if (!$this->ion_auth->logged_in())
 		{
@@ -159,7 +160,7 @@ class Auth extends CI_Controller {
 			);
 
 			//render
-			$this->load->view('auth/change_password', $this->data);
+			$this->_render_page('auth/change_password', $this->data);
 		}
 		else
 		{
@@ -184,7 +185,7 @@ class Auth extends CI_Controller {
 	//forgot password
 	function forgot_password()
 	{
-		$this->form_validation->set_rules('email', 'Email Address', 'required');
+		$this->form_validation->set_rules('email', $this->lang->line('forgot_password_validation_email_label'), 'required');
 		if ($this->form_validation->run() == false)
 		{
 			//setup the input
@@ -193,18 +194,16 @@ class Auth extends CI_Controller {
 			);
 
 			if ( $this->config->item('identity', 'ion_auth') == 'username' ){
-				$this->data['identity_label'] = 'Username';	
+				$this->data['identity_label'] = $this->lang->line('forgot_password_username_identity_label');
 			}
 			else
 			{
-				$this->data['identity_label'] = 'Email';	
+				$this->data['identity_label'] = $this->lang->line('forgot_password_email_identity_label');
 			}
-			
-			
 
 			//set any errors and display the form
 			$this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-			$this->load->view('auth/forgot_password', $this->data);
+			$this->_render_page('auth/forgot_password', $this->data);
 		}
 		else
 		{
@@ -243,8 +242,8 @@ class Auth extends CI_Controller {
 		{
 			//if the code is valid then display the password reset form
 
-			$this->form_validation->set_rules('new', 'New Password', 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[new_confirm]');
-			$this->form_validation->set_rules('new_confirm', 'Confirm New Password', 'required');
+			$this->form_validation->set_rules('new', $this->lang->line('reset_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[new_confirm]');
+			$this->form_validation->set_rules('new_confirm', $this->lang->line('reset_password_validation_new_password_confirm_label'), 'required');
 
 			if ($this->form_validation->run() == false)
 			{
@@ -276,7 +275,7 @@ class Auth extends CI_Controller {
 				$this->data['code'] = $code;
 
 				//render
-				$this->load->view('auth/reset_password', $this->data);
+				$this->_render_page('auth/reset_password', $this->data);
 			}
 			else
 			{
@@ -287,7 +286,7 @@ class Auth extends CI_Controller {
 					//something fishy might be up
 					$this->ion_auth->clear_forgotten_password_code($code);
 
-					show_error('This form post did not pass our security checks.');
+					show_error($this->lang->line('error_csrf'));
 
 				}
 				else
@@ -352,8 +351,8 @@ class Auth extends CI_Controller {
 		$id = $this->config->item('use_mongodb', 'ion_auth') ? (string) $id : (int) $id;
 
 		$this->load->library('form_validation');
-		$this->form_validation->set_rules('confirm', 'confirmation', 'required');
-		$this->form_validation->set_rules('id', 'user ID', 'required|alpha_numeric');
+		$this->form_validation->set_rules('confirm', $this->lang->line('deactivate_validation_confirm_label'), 'required');
+		$this->form_validation->set_rules('id', $this->lang->line('deactivate_validation_user_id_label'), 'required|alpha_numeric');
 
 		if ($this->form_validation->run() == FALSE)
 		{
@@ -361,7 +360,7 @@ class Auth extends CI_Controller {
 			$this->data['csrf'] = $this->_get_csrf_nonce();
 			$this->data['user'] = $this->ion_auth->user($id)->row();
 
-			$this->load->view('auth/deactivate_user', $this->data);
+			$this->_render_page('auth/deactivate_user', $this->data);
 		}
 		else
 		{
@@ -371,7 +370,7 @@ class Auth extends CI_Controller {
 				// do we have a valid request?
 				if ($this->_valid_csrf_nonce() === FALSE || $id != $this->input->post('id'))
 				{
-					show_error('This form post did not pass our security checks.');
+					show_error($this->lang->line('error_csrf'));
 				}
 
 				// do we have the right userlevel?
@@ -397,15 +396,13 @@ class Auth extends CI_Controller {
 		}
 
 		//validate form input
-		$this->form_validation->set_rules('first_name', 'First Name', 'required|xss_clean');
-		$this->form_validation->set_rules('last_name', 'Last Name', 'required|xss_clean');
-		$this->form_validation->set_rules('email', 'Email Address', 'required|valid_email');
-		$this->form_validation->set_rules('phone1', 'First Part of Phone', 'required|xss_clean|min_length[3]|max_length[3]');
-		$this->form_validation->set_rules('phone2', 'Second Part of Phone', 'required|xss_clean|min_length[3]|max_length[3]');
-		$this->form_validation->set_rules('phone3', 'Third Part of Phone', 'required|xss_clean|min_length[4]|max_length[4]');
-		$this->form_validation->set_rules('company', 'Company Name', 'required|xss_clean');
-		$this->form_validation->set_rules('password', 'Password', 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[password_confirm]');
-		$this->form_validation->set_rules('password_confirm', 'Password Confirmation', 'required');
+		$this->form_validation->set_rules('first_name', $this->lang->line('create_user_validation_fname_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('last_name', $this->lang->line('create_user_validation_lname_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('email', $this->lang->line('create_user_validation_email_label'), 'required|valid_email');
+		$this->form_validation->set_rules('phone', $this->lang->line('create_user_validation_phone_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('company', $this->lang->line('create_user_validation_company_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('password', $this->lang->line('create_user_validation_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[password_confirm]');
+		$this->form_validation->set_rules('password_confirm', $this->lang->line('create_user_validation_password_confirm_label'), 'required');
 
 		if ($this->form_validation->run() == true)
 		{
@@ -417,7 +414,7 @@ class Auth extends CI_Controller {
 				'first_name' => $this->input->post('first_name'),
 				'last_name'  => $this->input->post('last_name'),
 				'company'    => $this->input->post('company'),
-				'phone'      => $this->input->post('phone1') . '-' . $this->input->post('phone2') . '-' . $this->input->post('phone3'),
+				'phone'      => $this->input->post('phone'),
 			);
 		}
 		if ($this->form_validation->run() == true && $this->ion_auth->register($username, $password, $email, $additional_data))
@@ -457,23 +454,11 @@ class Auth extends CI_Controller {
 				'type'  => 'text',
 				'value' => $this->form_validation->set_value('company'),
 			);
-			$this->data['phone1'] = array(
-				'name'  => 'phone1',
-				'id'    => 'phone1',
+			$this->data['phone'] = array(
+				'name'  => 'phone',
+				'id'    => 'phone',
 				'type'  => 'text',
-				'value' => $this->form_validation->set_value('phone1'),
-			);
-			$this->data['phone2'] = array(
-				'name'  => 'phone2',
-				'id'    => 'phone2',
-				'type'  => 'text',
-				'value' => $this->form_validation->set_value('phone2'),
-			);
-			$this->data['phone3'] = array(
-				'name'  => 'phone3',
-				'id'    => 'phone3',
-				'type'  => 'text',
-				'value' => $this->form_validation->set_value('phone3'),
+				'value' => $this->form_validation->set_value('phone'),
 			);
 			$this->data['password'] = array(
 				'name'  => 'password',
@@ -488,7 +473,7 @@ class Auth extends CI_Controller {
 				'value' => $this->form_validation->set_value('password_confirm'),
 			);
 
-			$this->load->view('auth/create_user', $this->data);
+			$this->_render_page('auth/create_user', $this->data);
 		}
 	}
 
@@ -505,55 +490,47 @@ class Auth extends CI_Controller {
 		$user = $this->ion_auth->user($id)->row();
 		$groups=$this->ion_auth->groups()->result_array();
 		$currentGroups = $this->ion_auth->get_users_groups($id)->result();
-		
-		//process the phone number
-		if (isset($user->phone) && !empty($user->phone))
-		{
-			$user->phone = explode('-', $user->phone);
-		}
 
 		//validate form input
-		$this->form_validation->set_rules('first_name', 'First Name', 'required|xss_clean');
-		$this->form_validation->set_rules('last_name', 'Last Name', 'required|xss_clean');
-		$this->form_validation->set_rules('phone1', 'First Part of Phone', 'required|xss_clean|min_length[3]|max_length[3]');
-		$this->form_validation->set_rules('phone2', 'Second Part of Phone', 'required|xss_clean|min_length[3]|max_length[3]');
-		$this->form_validation->set_rules('phone3', 'Third Part of Phone', 'required|xss_clean|min_length[4]|max_length[4]');
-		$this->form_validation->set_rules('company', 'Company Name', 'required|xss_clean');
-		$this->form_validation->set_rules('groups', 'Groups', 'xss_clean');
-		
+		$this->form_validation->set_rules('first_name', $this->lang->line('edit_user_validation_fname_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('last_name', $this->lang->line('edit_user_validation_lname_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('phone', $this->lang->line('edit_user_validation_phone_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('company', $this->lang->line('edit_user_validation_company_label'), 'required|xss_clean');
+		$this->form_validation->set_rules('groups', $this->lang->line('edit_user_validation_groups_label'), 'xss_clean');
+
 		if (isset($_POST) && !empty($_POST))
 		{
 			// do we have a valid request?
 			if ($this->_valid_csrf_nonce() === FALSE || $id != $this->input->post('id'))
 			{
-				show_error('This form post did not pass our security checks.');
+				show_error($this->lang->line('error_csrf'));
 			}
 
 			$data = array(
 				'first_name' => $this->input->post('first_name'),
 				'last_name'  => $this->input->post('last_name'),
 				'company'    => $this->input->post('company'),
-				'phone'      => $this->input->post('phone1') . '-' . $this->input->post('phone2') . '-' . $this->input->post('phone3'),
+				'phone'      => $this->input->post('phone'),
 			);
-			
+
 			//Update the groups user belongs to
 			$groupData = $this->input->post('groups');
-			
+
 			if (isset($groupData) && !empty($groupData)) {
-				 
+
 				$this->ion_auth->remove_from_group('', $id);
-				
-				foreach ($groupData as $grp) {					
+
+				foreach ($groupData as $grp) {
 					$this->ion_auth->add_to_group($grp, $id);
 				}
-				
+
 			}
 
 			//update the password if it was posted
 			if ($this->input->post('password'))
 			{
-				$this->form_validation->set_rules('password', 'Password', 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[password_confirm]');
-				$this->form_validation->set_rules('password_confirm', 'Password Confirmation', 'required');
+				$this->form_validation->set_rules('password', $this->lang->line('edit_user_validation_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|max_length[' . $this->config->item('max_password_length', 'ion_auth') . ']|matches[password_confirm]');
+				$this->form_validation->set_rules('password_confirm', $this->lang->line('edit_user_validation_password_confirm_label'), 'required');
 
 				$data['password'] = $this->input->post('password');
 			}
@@ -598,23 +575,11 @@ class Auth extends CI_Controller {
 			'type'  => 'text',
 			'value' => $this->form_validation->set_value('company', $user->company),
 		);
-		$this->data['phone1'] = array(
-			'name'  => 'phone1',
-			'id'    => 'phone1',
+		$this->data['phone'] = array(
+			'name'  => 'phone',
+			'id'    => 'phone',
 			'type'  => 'text',
-			'value' => $this->form_validation->set_value('phone1', $user->phone[0]),
-		);
-		$this->data['phone2'] = array(
-			'name'  => 'phone2',
-			'id'    => 'phone2',
-			'type'  => 'text',
-			'value' => $this->form_validation->set_value('phone2', $user->phone[1]),
-		);
-		$this->data['phone3'] = array(
-			'name'  => 'phone3',
-			'id'    => 'phone3',
-			'type'  => 'text',
-			'value' => $this->form_validation->set_value('phone3', $user->phone[2]),
+			'value' => $this->form_validation->set_value('phone', $user->phone),
 		);
 		$this->data['password'] = array(
 			'name' => 'password',
@@ -627,13 +592,13 @@ class Auth extends CI_Controller {
 			'type' => 'password'
 		);
 
-		$this->load->view('auth/edit_user', $this->data);
+		$this->_render_page('auth/edit_user', $this->data);
 	}
 
 	// create a new group
 	function create_group()
 	{
-		$this->data['title'] = "Create Group";
+		$this->data['title'] = $this->lang->line('create_group_title');
 
 		if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin())
 		{
@@ -641,8 +606,8 @@ class Auth extends CI_Controller {
 		}
 
 		//validate form input
-		$this->form_validation->set_rules('group_name', 'Group name', 'required|alpha_dash|xss_clean');
-		$this->form_validation->set_rules('description', 'Description', 'xss_clean');
+		$this->form_validation->set_rules('group_name', $this->lang->line('create_group_validation_name_label'), 'required|alpha_dash|xss_clean');
+		$this->form_validation->set_rules('description', $this->lang->line('create_group_validation_desc_label'), 'xss_clean');
 
 		if ($this->form_validation->run() == TRUE)
 		{
@@ -674,7 +639,7 @@ class Auth extends CI_Controller {
 				'value' => $this->form_validation->set_value('description'),
 			);
 
-			$this->load->view('auth/create_group', $this->data);
+			$this->_render_page('auth/create_group', $this->data);
 		}
 	}
 
@@ -687,7 +652,7 @@ class Auth extends CI_Controller {
 			redirect('auth', 'refresh');
 		}
 
-		$this->data['title'] = "Edit Group";
+		$this->data['title'] = $this->lang->line('edit_group_title');
 
 		if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin())
 		{
@@ -697,8 +662,8 @@ class Auth extends CI_Controller {
 		$group = $this->ion_auth->group($id)->row();
 
 		//validate form input
-		$this->form_validation->set_rules('group_name', 'Group name', 'required|alpha_dash|xss_clean');
-		$this->form_validation->set_rules('group_description', 'Group Description', 'xss_clean');
+		$this->form_validation->set_rules('group_name', $this->lang->line('edit_group_validation_name_label'), 'required|alpha_dash|xss_clean');
+		$this->form_validation->set_rules('group_description', $this->lang->line('edit_group_validation_desc_label'), 'xss_clean');
 
 		if (isset($_POST) && !empty($_POST))
 		{
@@ -708,7 +673,7 @@ class Auth extends CI_Controller {
 
 				if($group_update)
 				{
-					$this->session->set_flashdata('message', "Group Saved");
+					$this->session->set_flashdata('message', $this->lang->line('edit_group_saved'));
 				}
 				else
 				{
@@ -737,7 +702,7 @@ class Auth extends CI_Controller {
 			'value' => $this->form_validation->set_value('group_description', $group->description),
 		);
 
-		$this->load->view('auth/edit_group', $this->data);
+		$this->_render_page('auth/edit_group', $this->data);
 	}
 
 
@@ -763,6 +728,16 @@ class Auth extends CI_Controller {
 		{
 			return FALSE;
 		}
+	}
+
+	function _render_page($view, $data=null, $render=false)
+	{
+
+		$this->viewdata = (empty($data)) ? $this->data: $data;
+
+		$view_html = $this->load->view($view, $this->viewdata, $render);
+
+		if (!$render) return $view_html;
 	}
 
 }
